@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pranav Patel | AI Architect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { margin: 0; overflow: hidden; background: #050505; font-family: 'Rajdhani', sans-serif; color: white; }
+        
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        .interactive { pointer-events: auto; }
+
+        /* Glitch Text */
+        .glitch-wrapper { font-family: 'Syncopate', sans-serif; position: relative; }
+        .glitch { font-size: 4rem; font-weight: 700; text-transform: uppercase; position: relative; color: #fff; letter-spacing: 4px; }
+        .glitch::before, .glitch::after {
+            content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .glitch::before { left: 2px; text-shadow: -1px 0 #ff00c1; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim 5s infinite linear alternate-reverse; }
+        .glitch::after { left: -2px; text-shadow: -1px 0 #00fff9; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim2 5s infinite linear alternate-reverse; }
+        
+        @keyframes glitch-anim {
+            0% { clip: rect(32px, 9999px, 21px, 0); }
+            20% { clip: rect(67px, 9999px, 96px, 0); }
+            40% { clip: rect(33px, 9999px, 12px, 0); }
+            60% { clip: rect(89px, 9999px, 11px, 0); }
+            80% { clip: rect(2px, 9999px, 78px, 0); }
+            100% { clip: rect(56px, 9999px, 44px, 0); }
+        }
+        @keyframes glitch-anim2 {
+            0% { clip: rect(12px, 9999px, 71px, 0); }
+            20% { clip: rect(87px, 9999px, 4px, 0); }
+            40% { clip: rect(13px, 9999px, 62px, 0); }
+            60% { clip: rect(59px, 9999px, 21px, 0); }
+            80% { clip: rect(22px, 9999px, 48px, 0); }
+            100% { clip: rect(46px, 9999px, 64px, 0); }
+        }
+
+        /* Navigation */
+        .nav-item {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            cursor: pointer;
+            padding: 20px 10px;
+            border-left: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .nav-item:hover, .nav-item.active {
+            color: #00fff9;
+            border-left: 3px solid #00fff9;
+            background: rgba(0, 255, 249, 0.1);
+            text-shadow: 0 0 10px #00fff9;
+        }
+
+        /* Content Cards */
+        .glass-card {
+            background: rgba(5, 5, 5, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 255, 249, 0.2);
+            box-shadow: 0 0 30px rgba(0, 255, 249, 0.05);
+        }
+        
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #00fff9; }
+
+        /* Loading */
+        #loader {
+            position: fixed; inset: 0; background: #000; z-index: 50;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; transition: opacity 1s;
+        }
+        .loader-bar {
+            width: 200px; height: 2px; background: #111; margin-top: 20px; overflow: hidden;
+        }
+        .loader-progress {
+            width: 0%; height: 100%; background: #00fff9; transition: width 0.2s;
+            box-shadow: 0 0 20px #00fff9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="text-2xl font-[Syncopate] tracking-widest text-cyan-400">INITIALIZING NEURAL CORE</div>
+        <div class="text-xs text-gray-500 mt-2 font-mono">LOADING VECTORS...</div>
+        <div class="loader-bar"><div class="loader-progress" id="progress"></div></div>
+    </div>
+
+    <!-- 3D Background -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <!-- Header -->
+        <div class="p-8 flex justify-between items-start">
+            <div>
+                <div class="text-xs text-cyan-400 font-mono mb-2">SYSTEM: ONLINE</div>
+                <div class="glitch-wrapper">
+                    <div class="glitch text-4xl md:text-6xl" data-text="PRANAV">PRANAV</div>
+                    <div class="text-2xl md:text-3xl font-bold text-white/80 tracking-widest mt-2">PATEL</div>
+                </div>
+                <div class="mt-4 flex items-center gap-3">
+                    <div class="h-px w-12 bg-cyan-500"></div>
+                    <!-- Changed to broader title to target all positions -->
+                    <div class="text-sm tracking-wider text-cyan-300">SOFTWARE & AI ENGINEER</div>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu Toggle (Visible on small screens) -->
+            <button onclick="toggleMenu()" class="md:hidden interactive text-cyan-400 text-2xl border border-cyan-500/30 p-2 rounded">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- Right Side Navigation (Desktop) -->
+        <div class="hidden md:flex flex-col absolute right-0 top-1/2 transform -translate-y-1/2 interactive">
+            <div class="nav-item active" onclick="morphTo('home')">01 // CORE</div>
+            <div class="nav-item" onclick="morphTo('experience')">02 // EXP</div>
+            <div class="nav-item" onclick="morphTo('education')">03 // EDU</div>
+            <div class="nav-item" onclick="morphTo('projects')">04 // PROJECTS</div>
+            <div class="nav-item" onclick="morphTo('skills')">05 // STACK</div>
+            <div class="nav-item" onclick="morphTo('contact')">06 // UPLINK</div>
+        </div>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu" class="fixed inset-0 bg-black/90 z-40 hidden flex-col justify-center items-center gap-8 interactive md:hidden backdrop-blur-xl">
+            <button onclick="morphTo('home'); toggleMenu()" class="text-2xl text-cyan-400 font-[Syncopate]">CORE</button>
+            <button onclick="morphTo('experience'); toggleMenu()" class="text-2xl text-white font-[Syncopate]">EXPERIENCE</button>
+            <button onclick="morphTo('education'); toggleMenu()" class="text-2xl text-white font-[Syncopate]">EDUCATION</button>
+            <button onclick="morphTo('projects'); toggleMenu()" class="text-2xl text-white font-[Syncopate]">PROJECTS</button>
+            <button onclick="morphTo('skills'); toggleMenu()" class="text-2xl text-white font-[Syncopate]">STACK</button>
+            <button onclick="morphTo('contact'); toggleMenu()" class="text-2xl text-white font-[Syncopate]">UPLINK</button>
+            <button onclick="toggleMenu()" class="absolute top-8 right-8 text-gray-500"><i class="fas fa-times text-2xl"></i></button>
+        </div>
+
+        <!-- Content Area (Bottom Left) -->
+        <div class="p-4 md:p-12 w-full md:w-[650px] interactive pointer-events-none">
+            <!-- Dynamic Content Container -->
+            <div id="content-container" class="opacity-0 transform translate-y-10 transition-all duration-500">
+                <!-- Content Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- THREE.JS & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+
+    <script>
+        // --- DATA ---
+        const SECTIONS = {
+            home: {
+                title: "ENGINEERING PORTFOLIO",
+                subtitle: "INNOVATION MEETS RELIABILITY",
+                content: `
+                    <p class="text-lg text-gray-300 leading-relaxed mb-6">
+                        I am a <span class="text-cyan-400">Software & AI Engineer</span> bridging the gap between intelligent systems and production-grade quality.
+                    </p>
+                    <p class="text-gray-400 mb-6">
+                        From building <span class="text-white">Generative AI</span> pipelines to engineering <span class="text-white">Automated QA</span> frameworks, I focus on creating software that is both smart and scalable.
+                        <br>
+                        <span class="text-xs text-gray-500 mt-2 block uppercase tracking-wider">Masters at Northeastern University</span>
+                    </p>
+                    <div class="flex gap-4">
+                        <button onclick="morphTo('experience')" class="px-6 py-3 bg-cyan-500/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-black transition-all uppercase tracking-widest text-sm font-bold">
+                            My Experience
+                        </button>
+                        <button onclick="morphTo('projects')" class="px-6 py-3 border border-gray-600 text-gray-400 hover:border-white hover:text-white transition-all uppercase tracking-widest text-sm font-bold">
+                            Projects
+                        </button>
+                    </div>
+                `
+            },
+            experience: {
+                title: "CAREER TIMELINE",
+                subtitle: "PROFESSIONAL ENGAGEMENTS",
+                content: `
+                    <div class="space-y-6 h-[50vh] overflow-y-auto custom-scroll pr-2">
+                        
+                        <!-- Dassault Systèmes -->
+                        <div class="glass-card p-6 border-l-4 border-green-500 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-green-500/20 text-green-400 text-[10px] px-2 py-1 font-bold uppercase tracking-widest">Incoming / Accepted</div>
+                            <!-- Dynamic Flex Layout: Col on Mobile, Row on Desktop -->
+                            <div class="flex flex-col md:flex-row justify-between items-start mb-3 gap-2">
+                                <div>
+                                    <h3 class="text-xl font-bold text-white">Data Apps QA Intern</h3>
+                                    <div class="text-green-400 font-bold">Dassault Systèmes</div>
+                                </div>
+                                <div class="text-left md:text-right text-xs text-gray-400 font-mono whitespace-nowrap">
+                                    Waltham, MA<br>175 Wyman St
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-300 mb-2">
+                                Engineering data application reliability for the SOLIDWORKS team.
+                            </p>
+                            <ul class="space-y-2 text-sm text-gray-400 list-disc ml-4">
+                                <li>Designing validation frameworks for <span class="text-green-200">3DEXPERIENCE Platform</span> migration.</li>
+                                <li>Identifying functionality gaps in enterprise customer data sandboxes.</li>
+                                <li>Managing full-cycle defect tracking and improving CAD/PLM system stability.</li>
+                            </ul>
+                             <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="text-[10px] bg-green-900/30 px-2 py-1 rounded text-green-300 border border-green-800">Data Engineering</span>
+                                <span class="text-[10px] bg-green-900/30 px-2 py-1 rounded text-green-300 border border-green-800">SOLIDWORKS</span>
+                                <span class="text-[10px] bg-green-900/30 px-2 py-1 rounded text-green-300 border border-green-800">Testing</span>
+                            </div>
+                        </div>
+
+                        <!-- Zippit -->
+                        <div class="glass-card p-6 border-l-4 border-cyan-900/50 hover:border-cyan-500 transition-colors">
+                            <div class="flex flex-col md:flex-row justify-between items-start mb-3 gap-2">
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">Software QA Engineer Intern</h3>
+                                    <div class="text-cyan-400">Zippit Now Pvt. Ltd.</div>
+                                </div>
+                                <div class="text-left md:text-right text-xs text-gray-400 font-mono whitespace-nowrap">
+                                    Jun 2023 – Jan 2024<br>Ahmedabad, India
+                                </div>
+                            </div>
+                            <ul class="space-y-2 text-sm text-gray-400 list-disc ml-4">
+                                <li>Built <span class="text-cyan-200">Python & SQL validation pipelines</span> to ensure accuracy in large-scale transactional datasets.</li>
+                                <li>Implemented <span class="text-cyan-200">anomaly detection algorithms</span> improving error-capture coverage by 35%.</li>
+                                <li>Developed modular automation scripts integrated into CI/CD workflows.</li>
+                                <li>Collaborated with backend teams on API reliability tracing.</li>
+                            </ul>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-300 border border-gray-700">Python</span>
+                                <span class="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-300 border border-gray-700">SQL</span>
+                                <span class="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-300 border border-gray-700">CI/CD</span>
+                                <span class="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-300 border border-gray-700">Automation</span>
+                            </div>
+                        </div>
+
+                    </div>
+                `
+            },
+            education: {
+                title: "ACADEMIC ARCHIVE",
+                subtitle: "FOUNDATIONAL KNOWLEDGE",
+                content: `
+                    <div class="space-y-6">
+                        <!-- Northeastern -->
+                        <div class="glass-card p-6 border-l-4 border-red-600">
+                            <!-- Dynamic Flex Layout: Stacks on mobile, Side-by-side on desktop -->
+                            <div class="flex flex-col md:flex-row justify-between items-start gap-2">
+                                <div>
+                                    <h3 class="text-xl font-bold text-white">Master of Science in Information Systems</h3>
+                                    <div class="text-red-400 font-bold">Northeastern University</div>
+                                </div>
+                                <!-- Whitespace-nowrap ensures date stays on one line -->
+                                <div class="text-left md:text-right text-xs text-gray-400 font-mono whitespace-nowrap">
+                                    Sep 2024 – Dec 2026<br>Boston, MA
+                                </div>
+                            </div>
+                            <div class="mt-3 text-sm text-gray-300">
+                                <strong class="text-white">Key Coursework:</strong><br>
+                                Database Management Systems, Advanced Data Sciences, Application Engineering
+                            </div>
+                        </div>
+
+                        <!-- LDRP -->
+                        <div class="glass-card p-6 border-l-4 border-blue-600">
+                            <div class="flex flex-col md:flex-row justify-between items-start gap-2">
+                                <div>
+                                    <h3 class="text-xl font-bold text-white">Bachelor of Science in Computer Engineering</h3>
+                                    <div class="text-blue-400 font-bold">LDRP Institute of Technology</div>
+                                </div>
+                                <div class="text-left md:text-right text-xs text-gray-400 font-mono whitespace-nowrap">
+                                    Aug 2020 – May 2024<br>Gujarat, India
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            projects: {
+                title: "PROJECT ARCHIVE",
+                subtitle: "DEPLOYED SYSTEMS",
+                content: `
+                    <div class="space-y-4 h-[50vh] overflow-y-auto custom-scroll pr-2">
+                        
+                        <!-- PE Dashboard -->
+                        <div class="glass-card p-5 hover:border-cyan-500 transition-colors group cursor-pointer">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-xl font-bold text-white group-hover:text-cyan-400">PE Dashboard AI50</h3>
+                                <a href="https://github.com/Big-Data-IA-Team-5/pe-dashboard-ai50" target="_blank" class="text-gray-500 hover:text-white"><i class="fab fa-github"></i></a>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">
+                                Automated private equity intelligence pipeline for Forbes AI 50 firms.
+                                Reduced manual research time by <span class="text-white font-bold">65%</span> through multi-source ingestion and data consolidation.
+                            </p>
+                            <div class="flex gap-2 text-xs">
+                                <span class="bg-blue-900/50 px-2 py-1 text-blue-300 rounded">Automation</span>
+                                <span class="bg-blue-900/50 px-2 py-1 text-blue-300 rounded">Python</span>
+                            </div>
+                        </div>
+
+                        <!-- AURELIA -->
+                        <div class="glass-card p-5 hover:border-cyan-500 transition-colors group cursor-pointer">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-xl font-bold text-white group-hover:text-cyan-400">AURELIA</h3>
+                                <a href="https://github.com/Big-Data-IA-Team-5/AURELIA---Automated-Financial-Concept-Note-Generator" target="_blank" class="text-gray-500 hover:text-white"><i class="fab fa-github"></i></a>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">
+                                Financial Concept Note Generator using <span class="text-white font-bold">RAG + Pinecone (20K+ vectors)</span>.
+                                Achieved 53% cache hit rate and 3× faster inference via optimized chunking.
+                            </p>
+                            <div class="flex gap-2 text-xs">
+                                <span class="bg-purple-900/50 px-2 py-1 text-purple-300 rounded">RAG</span>
+                                <span class="bg-purple-900/50 px-2 py-1 text-purple-300 rounded">FastAPI</span>
+                            </div>
+                        </div>
+
+                        <!-- DOW 30 -->
+                        <div class="glass-card p-5 hover:border-cyan-500 transition-colors group cursor-pointer">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-xl font-bold text-white group-hover:text-cyan-400">DOW 30 Data Pipeline</h3>
+                                <a href="https://github.com/Big-Data-IA-Team-5/Assignment-2---DAMG7245-Team-5" target="_blank" class="text-gray-500 hover:text-white"><i class="fab fa-github"></i></a>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">
+                                Orchestrated <span class="text-white font-bold">Airflow</span> pipelines with Docling to parse complex financial tables and standardized datasets for forecasting.
+                            </p>
+                            <div class="flex gap-2 text-xs">
+                                <span class="bg-green-900/50 px-2 py-1 text-green-300 rounded">Airflow</span>
+                                <span class="bg-green-900/50 px-2 py-1 text-green-300 rounded">Docling</span>
+                            </div>
+                        </div>
+
+                        <!-- PDF Pipeline -->
+                        <div class="glass-card p-5 hover:border-cyan-500 transition-colors group cursor-pointer">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-xl font-bold text-white group-hover:text-cyan-400">PDF Intelligence Pipeline</h3>
+                                <a href="https://github.com/Big-Data-IA-Team-5/Assignment-1---DAMG7245-Team-5" target="_blank" class="text-gray-500 hover:text-white"><i class="fab fa-github"></i></a>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">
+                                End-to-end 5-stage MLOps pipeline with <span class="text-white font-bold">DVC</span> reproducibility and 80% compute reuse.
+                            </p>
+                            <div class="flex gap-2 text-xs">
+                                <span class="bg-yellow-900/50 px-2 py-1 text-yellow-300 rounded">MLOps</span>
+                                <span class="bg-yellow-900/50 px-2 py-1 text-yellow-300 rounded">DVC</span>
+                            </div>
+                        </div>
+
+                    </div>
+                `
+            },
+            skills: {
+                title: "TECH STACK",
+                subtitle: "CAPABILITIES",
+                content: `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-card p-4">
+                            <h4 class="text-cyan-400 font-bold mb-2 text-sm"><i class="fas fa-brain mr-2"></i>AI / LLM</h4>
+                            <ul class="text-gray-400 text-sm space-y-1">
+                                <li>RAG Pipelines</li>
+                                <li>LangChain / Pinecone</li>
+                                <li>Prompt Engineering</li>
+                                <li>Embeddings Optimization</li>
+                            </ul>
+                        </div>
+                        <div class="glass-card p-4">
+                            <h4 class="text-cyan-400 font-bold mb-2 text-sm"><i class="fas fa-server mr-2"></i>BACKEND</h4>
+                            <ul class="text-gray-400 text-sm space-y-1">
+                                <li>FastAPI / Python</li>
+                                <li>PostgreSQL</li>
+                                <li>Docker / Kubernetes</li>
+                                <li>GCP Cloud Run</li>
+                            </ul>
+                        </div>
+                        <div class="glass-card p-4">
+                            <h4 class="text-cyan-400 font-bold mb-2 text-sm"><i class="fas fa-network-wired mr-2"></i>DATA OPS</h4>
+                            <ul class="text-gray-400 text-sm space-y-1">
+                                <li>Apache Airflow</li>
+                                <li>DVC / MLOps</li>
+                                <li>GitHub Actions</li>
+                                <li>ETL Pipelines</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            contact: {
+                title: "ESTABLISH UPLINK",
+                subtitle: "CONTACT ME",
+                content: `
+                    <div class="glass-card p-6 text-center">
+                        <p class="text-gray-300 mb-6">Ready to collaborate on the next generation of AI systems?</p>
+                        <div class="flex justify-center gap-4 mb-8">
+                            <a href="mailto:patel.pranavna@northeastern.edu" class="w-12 h-12 flex items-center justify-center rounded-full border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-black transition-all">
+                                <i class="fas fa-envelope"></i>
+                            </a>
+                            <a href="https://www.linkedin.com/in/pranav-patel-061754325/" target="_blank" class="w-12 h-12 flex items-center justify-center rounded-full border border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white transition-all">
+                                <i class="fab fa-linkedin-in"></i>
+                            </a>
+                            <a href="https://github.com/pranavpatel0741" target="_blank" class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-500 text-gray-400 hover:bg-white hover:text-black transition-all">
+                                <i class="fab fa-github"></i>
+                            </a>
+                        </div>
+                        <div class="text-sm text-gray-500 font-mono">
+                            LOCATION: BOSTON, MA<br>
+                            PHONE: (857) 225-6150
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        // scene.fog = new THREE.FogExp2(0x000000, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 30;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // --- PARTICLE SYSTEM ---
+        // We create one large buffer geometry and animate the positions attribute
+        const PARTICLE_COUNT = 15000;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const currentPositions = new Float32Array(PARTICLE_COUNT * 3);
+        const targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+        
+        // Colors attribute for shader-like effect
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        const color = new THREE.Color();
+
+        // Initial Positions (Random Cloud)
+        for(let i=0; i<PARTICLE_COUNT; i++) {
+            const x = (Math.random() - 0.5) * 100;
+            const y = (Math.random() - 0.5) * 100;
+            const z = (Math.random() - 0.5) * 100;
+            
+            positions[i*3] = x;
+            positions[i*3+1] = y;
+            positions[i*3+2] = z;
+            
+            currentPositions[i*3] = x;
+            currentPositions[i*3+1] = y;
+            currentPositions[i*3+2] = z;
+            
+            // Cyan/Blue/Purple gradient
+            if (Math.random() > 0.5) {
+                color.setHex(0x00fff9); // Cyan
+            } else {
+                color.setHex(0xbd00ff); // Purple
+            }
+            
+            colors[i*3] = color.r;
+            colors[i*3+1] = color.g;
+            colors[i*3+2] = color.b;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.15,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particleSystem);
+
+        // --- GEOMETRY GENERATORS ---
+        // Functions to calculate target positions for different shapes
+
+        function getSpherePositions() {
+            const arr = new Float32Array(PARTICLE_COUNT * 3);
+            const radius = 12;
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
+                const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
+                
+                arr[i*3] = radius * Math.cos(theta) * Math.sin(phi);
+                arr[i*3+1] = radius * Math.sin(theta) * Math.sin(phi);
+                arr[i*3+2] = radius * Math.cos(phi);
+            }
+            return arr;
+        }
+
+        function getCylinderPositions() {
+            const arr = new Float32Array(PARTICLE_COUNT * 3);
+            const radius = 8;
+            const height = 30;
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const theta = (Math.random()) * Math.PI * 2;
+                const y = (Math.random() - 0.5) * height;
+                
+                arr[i*3] = radius * Math.cos(theta);
+                arr[i*3+1] = y;
+                arr[i*3+2] = radius * Math.sin(theta);
+                
+                // Add noise
+                if (Math.random() > 0.9) {
+                   arr[i*3] *= 1.5;
+                   arr[i*3+2] *= 1.5;
+                }
+            }
+            return arr;
+        }
+
+        function getGridPositions() {
+            const arr = new Float32Array(PARTICLE_COUNT * 3);
+            const rows = Math.ceil(Math.pow(PARTICLE_COUNT, 1/3)); 
+            const sep = 2;
+            const offset = (rows * sep) / 2;
+            
+            let i = 0;
+            for(let x=0; x<rows && i<PARTICLE_COUNT; x++) {
+                for(let y=0; y<rows && i<PARTICLE_COUNT; y++) {
+                    for(let z=0; z<rows && i<PARTICLE_COUNT; z++) {
+                        arr[i*3] = x * sep - offset;
+                        arr[i*3+1] = y * sep - offset;
+                        arr[i*3+2] = z * sep - offset;
+                        i++;
+                    }
+                }
+            }
+            return arr;
+        }
+
+        function getHelixPositions() {
+            const arr = new Float32Array(PARTICLE_COUNT * 3);
+            const radius = 8;
+            const height = 30;
+            
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const t = i / PARTICLE_COUNT;
+                const angle = t * Math.PI * 20; // 10 turns
+                
+                arr[i*3] = radius * Math.cos(angle);
+                arr[i*3+1] = (t - 0.5) * height;
+                arr[i*3+2] = radius * Math.sin(angle);
+                
+                // Add some noise/width
+                arr[i*3] += (Math.random()-0.5) * 2;
+                arr[i*3+1] += (Math.random()-0.5) * 2;
+                arr[i*3+2] += (Math.random()-0.5) * 2;
+            }
+            return arr;
+        }
+
+        function getTorusPositions() {
+            const arr = new Float32Array(PARTICLE_COUNT * 3);
+            const R = 10; // Major radius
+            const r = 4;  // Minor radius
+            
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const u = Math.random() * Math.PI * 2;
+                const v = Math.random() * Math.PI * 2;
+                
+                arr[i*3] = (R + r * Math.cos(v)) * Math.cos(u);
+                arr[i*3+1] = (R + r * Math.cos(v)) * Math.sin(u);
+                arr[i*3+2] = r * Math.sin(v);
+            }
+            return arr;
+        }
+
+        // Pre-calculate shapes
+        const SHAPES = {
+            home: getSpherePositions(), // Brain/Core
+            experience: getCylinderPositions(), // Tunnel/Timeline
+            education: getTorusPositions(), // Core Knowledge
+            projects: getGridPositions(), // Structured Data
+            skills: getHelixPositions(), // DNA/Evolution
+            contact: getSpherePositions() // Back to core
+        };
+
+        // Modify Contact to be a ring
+        const ringPos = new Float32Array(PARTICLE_COUNT * 3);
+        for(let i=0; i<PARTICLE_COUNT; i++) {
+            const theta = (i / PARTICLE_COUNT) * Math.PI * 2;
+            const r = 10 + Math.random() * 2;
+            ringPos[i*3] = r * Math.cos(theta);
+            ringPos[i*3+1] = (Math.random()-0.5) * 5; // Slight height
+            ringPos[i*3+2] = r * Math.sin(theta);
+        }
+        SHAPES.contact = ringPos;
+
+        // --- ANIMATION LOGIC ---
+        let currentShape = 'home';
+        
+        // Initialize target to home
+        for(let i=0; i<PARTICLE_COUNT*3; i++) {
+            targetPositions[i] = SHAPES.home[i];
+        }
+
+        function morphTo(section) {
+            currentShape = section;
+            const newTargets = SHAPES[section];
+            
+            // Update targets
+            for(let i=0; i<PARTICLE_COUNT*3; i++) {
+                targetPositions[i] = newTargets[i];
+            }
+
+            // Update UI
+            updateUI(section);
+            
+            // Update Nav
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            // Find index
+            const index = ['home', 'experience', 'education', 'projects', 'skills', 'contact'].indexOf(section);
+            if(index >= 0 && window.innerWidth > 768) {
+                document.querySelectorAll('.nav-item')[index].classList.add('active');
+            }
+            
+            // Camera Move
+            let targetZ = 30;
+            if(section === 'projects') targetZ = 40;
+            if(section === 'experience') targetZ = 35;
+            if(section === 'education') targetZ = 35;
+            
+            gsap.to(camera.position, {z: targetZ, duration: 1.5});
+        }
+
+        // --- RENDER LOOP ---
+        const clock = new THREE.Clock();
+        const mouse = new THREE.Vector2(9999, 9999); // Start off screen
+
+        document.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+            
+            const positions = particleSystem.geometry.attributes.position.array;
+            
+            // Physics parameters
+            const lerpFactor = 0.05; // How fast they seek target
+            
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const ix = i*3;
+                const iy = i*3+1;
+                const iz = i*3+2;
+
+                // 1. Seek Target (Morphing)
+                positions[ix] += (targetPositions[ix] - positions[ix]) * lerpFactor;
+                positions[iy] += (targetPositions[iy] - positions[iy]) * lerpFactor;
+                positions[iz] += (targetPositions[iz] - positions[iz]) * lerpFactor;
+
+                // 2. Noise / Life (Simulate breathing)
+                const noise = Math.sin(time + i * 0.1) * 0.02;
+                positions[ix] += noise;
+                positions[iy] += noise;
+
+                // 3. Mouse Interaction (Repulsion if close)
+                // Project particle to 2D screen space is expensive for 15k particles
+                // So we just rotate the whole system based on mouse for now to keep 60fps
+            }
+            
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            // Rotate entire system slowly
+            particleSystem.rotation.y += 0.002;
+            particleSystem.rotation.x += 0.001;
+
+            // Interactive rotation based on mouse
+            const targetRotX = mouse.y * 0.5;
+            const targetRotY = mouse.x * 0.5;
+            
+            // Gentle camera sway
+            camera.position.x += (mouse.x * 2 - camera.position.x) * 0.05;
+            camera.position.y += (mouse.y * 2 - camera.position.y) * 0.05;
+            camera.lookAt(0,0,0);
+
+            renderer.render(scene, camera);
+        }
+
+        // Loader Logic
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 10;
+            if(progress > 100) progress = 100;
+            document.getElementById('progress').style.width = progress + '%';
+            
+            if(progress === 100) {
+                clearInterval(interval);
+                gsap.to('#loader', {opacity: 0, duration: 1, onComplete: () => {
+                    document.getElementById('loader').style.display = 'none';
+                    animate();
+                    updateUI('home'); // Init content
+                }});
+            }
+        }, 100);
+
+        // --- UI LOGIC ---
+        function updateUI(section) {
+            const container = document.getElementById('content-container');
+            const data = SECTIONS[section];
+            
+            // Fade Out
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                // Change Content
+                container.innerHTML = `
+                    <div class="glass-card p-8 md:p-10 border-l-4 border-cyan-400 pointer-events-auto">
+                        <h2 class="text-4xl font-bold font-[Syncopate] text-white mb-1">${data.title}</h2>
+                        <div class="text-cyan-400 text-sm tracking-[0.3em] mb-6 font-bold">${data.subtitle}</div>
+                        <div class="text-gray-300">
+                            ${data.content}
+                        </div>
+                    </div>
+                `;
+                
+                // Fade In
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 400);
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if(menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
